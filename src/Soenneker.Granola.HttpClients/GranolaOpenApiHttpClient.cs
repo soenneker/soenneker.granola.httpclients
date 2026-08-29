@@ -11,6 +11,7 @@ using Soenneker.Utils.HttpClientCache.Abstract;
 
 namespace Soenneker.Granola.HttpClients;
 
+/// <inheritdoc cref="IGranolaOpenApiHttpClient"/>
 public sealed class GranolaOpenApiHttpClient : IGranolaOpenApiHttpClient
 {
     private readonly IHttpClientCache _httpClientCache;
