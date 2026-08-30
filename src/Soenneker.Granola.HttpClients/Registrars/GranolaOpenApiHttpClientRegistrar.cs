@@ -26,7 +26,7 @@ public static class GranolaOpenApiHttpClientRegistrar
     /// </summary>
     public static IServiceCollection AddGranolaOpenApiHttpClientAsScoped(this IServiceCollection services)
     {
-        services.AddHttpClientCacheAsSingleton()
+        services.AddHttpClientCacheAsScoped()
                 .TryAddScoped<IGranolaOpenApiHttpClient, GranolaOpenApiHttpClient>();
 
         return services;

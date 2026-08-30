@@ -1,10 +1,12 @@
 [![](https://img.shields.io/nuget/v/soenneker.granola.httpclients.svg?style=for-the-badge)](https://www.nuget.org/packages/soenneker.granola.httpclients/)
+[![](https://img.shields.io/github/actions/workflow/status/soenneker/soenneker.granola.httpclients/build-and-test.yml?style=for-the-badge)](https://github.com/soenneker/soenneker.granola.httpclients/actions/workflows/build-and-test.yml)
 [![](https://img.shields.io/github/actions/workflow/status/soenneker/soenneker.granola.httpclients/publish-package.yml?style=for-the-badge)](https://github.com/soenneker/soenneker.granola.httpclients/actions/workflows/publish-package.yml)
 [![](https://img.shields.io/nuget/dt/soenneker.granola.httpclients.svg?style=for-the-badge)](https://www.nuget.org/packages/soenneker.granola.httpclients/)
+[![](https://img.shields.io/github/actions/workflow/status/soenneker/soenneker.granola.httpclients/codeql.yml?label=CodeQL&style=for-the-badge)](https://github.com/soenneker/soenneker.granola.httpclients/actions/workflows/codeql.yml)
 
 # Soenneker.Granola.HttpClients
 
-A thread-safe singleton `HttpClient` for the Granola API.
+A lazy, cached `HttpClient` configured for Granola's public API and custom authentication schemes.
 
 ## Install
 
@@ -12,34 +14,53 @@ A thread-safe singleton `HttpClient` for the Granola API.
 dotnet add package Soenneker.Granola.HttpClients
 ```
 
-## Quick start
+## Configuration
+
+```json
+{
+  "Granola": {
+    "ApiKey": "<API key>",
+    "ClientBaseUrl": "https://public-api.granola.ai",
+    "AuthHeaderName": "Authorization",
+    "AuthHeaderValueTemplate": "Bearer {token}"
+  }
+}
+```
+
+Only `ApiKey` is required. The other values above are the defaults. `{token}` in the header template is replaced with the configured API key.
+
+## Register
 
 ```csharp
 using Soenneker.Granola.HttpClients.Registrars;
 using Microsoft.Extensions.DependencyInjection;
 
-var services = new ServiceCollection();
-var result = services.AddGranolaOpenApiHttpClientAsSingleton();
+services.AddGranolaOpenApiHttpClientAsSingleton();
 ```
 
-Adds `GranolaOpenApiHttpClient` as a singleton service.
+Singleton is the intended registration for higher-level scoped Granola utilities: disposing a utility scope does not tear down this long-lived client.
 
-## What you get
+The optional `AddGranolaOpenApiHttpClientAsScoped()` registration creates both the wrapper and its cache per scope, so disposing one scope cannot remove another scope's client.
 
-- `IGranolaOpenApiHttpClient` — A thread-safe singleton `HttpClient` for the Granola API.
-- `GranolaOpenApiHttpClientRegistrar` — Registers the OpenAPI HttpClient wrapper for dependency injection.
+## Direct use
+
+```csharp
+HttpClient client = await granolaHttpClient.Get(cancellationToken);
+HttpResponseMessage response = await client.GetAsync("/some-endpoint", cancellationToken);
+response.EnsureSuccessStatusCode();
+```
+
+For generated endpoint methods, use `Soenneker.Granola.OpenApiClientUtil` instead of sending raw HTTP requests.
 
 ## API at a glance
 
 | API | What it does | Result / important behavior |
 | --- | --- | --- |
-| `IGranolaOpenApiHttpClient.Get(cancellationToken)` | Gets the shared HTTP client configured with the Granola API base address and authentication settings. | The cached HTTP client instance; repeated calls return the same client until this service is disposed. |
-| `GranolaOpenApiHttpClientRegistrar.AddGranolaOpenApiHttpClientAsSingleton(services)` | Adds `GranolaOpenApiHttpClient` as a singleton service. | Returns `IServiceCollection`. |
-| `GranolaOpenApiHttpClientRegistrar.AddGranolaOpenApiHttpClientAsScoped(services)` | Adds `GranolaOpenApiHttpClient` as a scoped service. | Returns `IServiceCollection`. |
+| `Get(cancellationToken)` | Gets or creates the configured client. | Reuses one client within the registered cache lifetime. |
+| `AddGranolaOpenApiHttpClientAsSingleton()` | Registers an application-wide client cache. | Intended dependency for scoped Granola utilities. |
+| `AddGranolaOpenApiHttpClientAsScoped()` | Registers an independent cache per scope. | Scope disposal affects only that scope's client. |
 
 ## Practical notes
 
-- Cancellation stops pending work; it does not undo work that has already completed.
-- Reuse the registered client instead of constructing one per operation.
-- Calls that return a cached or singleton value reuse the same instance until the owning service is disposed.
-- Dispose instances you own when their scope ends so held resources can be released.
+- Cancellation can stop lazy client initialization and individual HTTP calls; it does not dispose an already cached client.
+- Let the DI container dispose the registered wrapper and cache. Do not dispose the returned `HttpClient` separately.
