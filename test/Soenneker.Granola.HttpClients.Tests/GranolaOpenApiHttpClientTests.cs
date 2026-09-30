@@ -25,7 +25,7 @@ public sealed class GranolaOpenApiHttpClientTests : HostedUnitTest
     }
 
     [Test]
-    public async Task Scoped_registration_owns_an_independent_cache()
+    public async ValueTask Scoped_registration_owns_an_independent_cache()
     {
         var services = new ServiceCollection();
 
