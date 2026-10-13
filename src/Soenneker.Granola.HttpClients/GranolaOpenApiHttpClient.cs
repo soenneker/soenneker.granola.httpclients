@@ -29,7 +29,7 @@ public sealed class GranolaOpenApiHttpClient : IGranolaOpenApiHttpClient
     {
         return _httpClientCache.Get(nameof(GranolaOpenApiHttpClient), (config: _config, baseUrl: _config["Granola:ClientBaseUrl"] ?? _prodBaseUrl), static state =>
         {
-            var apiKey = state.config.GetValueStrict<string>("Granola:ApiKey");
+            var apiKey = state.config.GetStringStrict("Granola:ApiKey");
             string authHeaderName = state.config["Granola:AuthHeaderName"] ?? "Authorization";
             string authHeaderValueTemplate = state.config["Granola:AuthHeaderValueTemplate"] ?? "Bearer {token}";
             string authHeaderValue = authHeaderValueTemplate.Replace("{token}", apiKey, StringComparison.Ordinal);
